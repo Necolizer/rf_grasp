@@ -1,0 +1,32 @@
+# processor
+seed: 1
+work_dir: ../work_dir/simple_task
+config: ./config/simple_task.yaml
+run_mode: train
+print_log: True
+
+# env
+n_envs: 1
+max_episode_length: 160
+reward_type: dense
+tolerance: 0.02
+load_object: True
+bin: 64
+movable_joints: 6
+raw_img_shape: [1280, 720]
+use_depth_img: False
+resized_img_shape: [224, 224]
+
+# cuda
+cuda_visible_device: 0
+device: [0]
+
+# rl stable-baseline3
+net_arch: [256,128]
+lr: 0.1
+gamma: 0.99
+total_timesteps: 8000000
+rollout_steps: 3200
+freq: 32000
+batch_size: 32
+progress_bar: True
