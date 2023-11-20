@@ -35,3 +35,7 @@ cv2.imshow("rgb", obs['observation'][:,:,:-1])
 cv2.imshow("depth", obs['observation'][:,:,-1])
 cv2.waitKey(0)
 env.Pend()
+
+
+# env.debug()
+# env.Pend()

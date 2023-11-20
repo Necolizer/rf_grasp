@@ -190,7 +190,18 @@ class Processor():
     def start(self):
 
         if self.arg.run_mode == 'train':
+
+            for argument, value in vars(self.arg).items():
+                self.print_log('{}: {}'.format(argument, value))
+
+            # def count_parameters(model):
+            #     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+            # self.print_log(f'# Parameters: {count_parameters(self.model)}')
+
+            self.print_log('###***************start training***************###')
+            
             self.train()
+            self.print_log('Done.\n')
 
 if __name__ == '__main__':
     parser = get_parser()

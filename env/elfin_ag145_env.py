@@ -26,7 +26,7 @@ class ElfinAG145Env(RFUniverseGymWrapper):
             bin = 64,
             movable_joints = 6,
             raw_img_shape = [1280, 720],
-            use_depth_img = True,
+            use_depth_img = False,
             resized_img_shape = [224, 224],
     ):
         super().__init__(
@@ -161,6 +161,8 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         self.gripper.GripperOpen()
 
         self.camera = self.InstanceObject(name='Camera', id=123456, attr_type=attr.CameraAttr)
+
+        # FIXME camera pos and ori random
         self.camera.SetTransform(position=[1.5, 0.8, 0], rotation=[0, 0, 0])
         # self.camera.LookAt(target=[i+j for i, j in zip(self.robot.data['position'], self.gripper.data['position'])])
         self.camera.LookAt(target=self.robot.data['position'])
@@ -191,6 +193,8 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         else:
             obs = rgb
 
+        # FIXME add camera pos and ori
+
         return {
             'observation': obs.copy(),
             'state': np.array(self.robot.data['joint_positions']).copy(),
@@ -211,9 +215,27 @@ class ElfinAG145Env(RFUniverseGymWrapper):
     def _reset_object(self):
         if self.akb:
             self.akb.Destroy()
+
+        # FIXME akb loading and randomizing
         self.akb = self.LoadURDF(path=os.path.abspath('/media/amax/NECOStorage/AKB_48_Dataset_v1.0/v1.0/drink/0b6681c4-0e49-11ed-a4e9-ec2e98c7e246/motion_unity_update.urdf'), native_ik=False)
-        self.akb.SetTransform(position=[random.uniform(0.4, 0.6), 0.03, random.uniform(0.4, 0.6)], rotation=[0, 0, 0])
+        # FIXME akb randomize pos and ori
+        self.akb.SetTransform(position=[random.uniform(0.4, 0.6), 0.03, random.uniform(-0.6, 0.6)], rotation=[0, 0, 0])
         self.akb.SetImmovable(False)
         self.akb.SetAllGravity(True)
         self.akb.GenerateMeshCollider()
         self._step()
+
+    # def debug(self):
+    #     a = self.gripper.data['gripper_is_open']
+    #     b = self.gripper.data['gripper_is_holding']
+    #     print(a)
+    #     print(b)
+
+    #     self.gripper.GripperClose()
+
+    #     self._step()
+
+    #     a = self.gripper.data['gripper_is_open']
+    #     b = self.gripper.data['gripper_is_holding']
+    #     print(a)
+    #     print(b)
