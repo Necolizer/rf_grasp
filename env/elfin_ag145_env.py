@@ -144,14 +144,37 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         else:
             distance_reward = -distance
 
-        distance_isSuccess = (distance < self.tolerance).astype(np.float32)
+        if (distance > self.tolerance) and not self.gripper.data['gripper_is_open']:
+            distance_reward = -distance * 2
+
+        distance_isSuccess = ((distance < self.tolerance) and not self.gripper.data['gripper_is_open']).astype(np.float32)
 
         # 2. Collision-based
 
+        if self.gripper.data['gripper_is_hindered']:
+            if self.gripper.data['gripper_is_holding']:
+                collision_reward = np.array([0], dtype=np.float32)
+                collision_isSuccess = (False).astype(np.float32)
+            else:
+                collision_reward = np.array([-100], dtype=np.float32)
+                collision_isSuccess = (False).astype(np.float32)
+        else:
+            if self.gripper.data['gripper_is_holding']:
+                collision_reward = np.array([50], dtype=np.float32)
+                collision_isSuccess = (True).astype(np.float32)
+            else:
+                collision_reward = np.array([0], dtype=np.float32)
+                collision_isSuccess = (False).astype(np.float32)
+
         # 3. Physics-based
 
+
+        # Sum
+        reward = distance_reward + collision_reward
+        isSuccess = distance_isSuccess and collision_isSuccess
+
         # reward, isSuccess
-        return distance_reward, distance_isSuccess
+        return reward, isSuccess
 
     def _env_setup(self):
 
@@ -222,6 +245,7 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         self.akb.SetTransform(position=[random.uniform(0.4, 0.6), 0.03, random.uniform(-0.6, 0.6)], rotation=[0, 0, 0])
         self.akb.SetImmovable(False)
         self.akb.SetAllGravity(True)
+        self.akb.SetTag('target')
         self.akb.GenerateMeshCollider()
         self._step()
 

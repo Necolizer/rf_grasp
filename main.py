@@ -6,8 +6,6 @@ import time
 import random
 import torch
 import argparse
-
-from collections import OrderedDict
 import yaml
 
 from stable_baselines3 import PPO
