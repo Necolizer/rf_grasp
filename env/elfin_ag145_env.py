@@ -40,7 +40,7 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         self.load_object = load_object
         self.asset_bundle_file = asset_bundle_file
 
-        # self.bin = bin
+        self.bin = bin
         self.movable_joints = movable_joints
         self.raw_img_width = raw_img_shape[0]
         self.raw_img_height = raw_img_shape[1]
@@ -81,9 +81,13 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         ]
         return np.array(joints, dtype=np.float32)
     
-    def action_space_to_absolute_angel(self, action: np.ndarray):
+    # def action_space_to_absolute_angel(self, action: np.ndarray):
+    #     # symmetric
+    #     return action * np.array([175.0, 135.0, 150.0, 175.0, 147.0, 175.0, 1.0], dtype=np.float32)
+    
+    def action_space_to_incremental_angel(self, action: np.ndarray):
         # symmetric
-        return action * np.array([175.0, 135.0, 150.0, 175.0, 147.0, 175.0, 1.0], dtype=np.float32)
+        return action * (np.array([175.0, 135.0, 150.0, 175.0, 147.0, 175.0], dtype=np.float32) * 2 / self.bin)
 
     def step(self, action: np.ndarray):
         """
@@ -91,10 +95,14 @@ class ElfinAG145Env(RFUniverseGymWrapper):
             action: numpy array.
         """
 
-        action = self.action_space_to_absolute_angel(action)
-        # print(action)
-        
-        self.robot.SetJointPosition(action[:-1].tolist())
+        # action = self.action_space_to_absolute_angel(action)
+        # self.robot.SetJointPosition(action[:-1].tolist())
+
+        increment = self.action_space_to_incremental_angel(action=action[:-1])
+        pos = np.array(self.robot.data['joint_positions']) + increment
+        boundaries = self.joints_angular_range()
+        clipped_pos = np.clip(pos, boundaries[:, 0], boundaries[:, 1])
+        self.robot.SetJointPosition(clipped_pos)
 
         self.robot.WaitDo()
 
@@ -279,18 +287,3 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         self.akb.SetAlbedoRecursively(color=[1.,1.,1.,1.])
         self.akb.GenerateMeshCollider()
         self._step()
-
-    # def debug(self):
-    #     a = self.gripper.data['gripper_is_open']
-    #     b = self.gripper.data['gripper_is_holding']
-    #     print(a)
-    #     print(b)
-
-    #     self.gripper.GripperClose()
-
-    #     self._step()
-
-    #     a = self.gripper.data['gripper_is_open']
-    #     b = self.gripper.data['gripper_is_holding']
-    #     print(a)
-    #     print(b)
