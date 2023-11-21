@@ -52,11 +52,17 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         self._env_setup()
         
         self.t = 0
-        self.low = np.array([-175.0, -135.0, -150.0, -175.0, -147.0, -175.0, -1])
-        self.high = np.array([175.0, 135.0, 150.0, 175.0, 147.0, 175.0, 1])
+
+        self.low = -1
+        self.high = 1
         self.action_space = spaces.Box(
-            low=self.low,  high=self.high, dtype=np.float32
+            low=self.low,  high=self.high, shape = (self.movable_joints+1,), dtype=np.float32
         )
+        # self.low = np.array([-175.0, -135.0, -150.0, -175.0, -147.0, -175.0, -1])
+        # self.high = np.array([175.0, 135.0, 150.0, 175.0, 147.0, 175.0, 1])
+        # self.action_space = spaces.Box(
+        #     low=self.low,  high=self.high, dtype=np.float32
+        # )
         # self.action_space = spaces.MultiDiscrete([self.bin for i in range(self.movable_joints)]+[2])
         obs = self._get_obs()
         self.observation_space = spaces.Dict({
@@ -74,12 +80,19 @@ class ElfinAG145Env(RFUniverseGymWrapper):
             [-175.0,175.0],
         ]
         return np.array(joints, dtype=np.float32)
+    
+    def action_space_to_absolute_angel(self, action: np.ndarray):
+        # symmetric
+        return action * np.array([175.0, 135.0, 150.0, 175.0, 147.0, 175.0, 1.0], dtype=np.float32)
 
     def step(self, action: np.ndarray):
         """
         Params:
             action: numpy array.
         """
+
+        action = self.action_space_to_absolute_angel(action)
+        # print(action)
         
         self.robot.SetJointPosition(action[:-1].tolist())
 
@@ -113,11 +126,10 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         super().reset()
         self.t = 0
 
+        self._reset_robot_and_gripper()
+
         if self.load_object:
             self._reset_object()
-
-        self.robot.SetJointPositionDirectly(self.init_pos)
-        self.gripper.GripperOpen()
 
         self._step()
 
@@ -182,10 +194,13 @@ class ElfinAG145Env(RFUniverseGymWrapper):
 
     def _env_setup(self):
 
-        self.robot =  self.attrs[55751]
+        self.robot = self.InstanceObject(name='elfin5_gripper_enhanced', id=55752, attr_type=attr.ControllerAttr)
         self.robot.SetJointPositionDirectly(self.init_pos)
-        self.gripper = self.attrs[557510]
+        self.attrs[557520] = attr.ControllerAttr(self, 557520)
+        self.gripper = self.attrs[557520]
         self.gripper.GripperOpen()
+
+        self._step()
 
         self.camera = self.InstanceObject(name='Camera', id=123456, attr_type=attr.CameraAttr)
 
@@ -238,6 +253,17 @@ class ElfinAG145Env(RFUniverseGymWrapper):
     def _compute_goal_distance(self, goal_a, goal_b):
         assert goal_a.shape == goal_b.shape
         return np.linalg.norm(goal_a - goal_b, axis=-1)
+    
+    def _reset_robot_and_gripper(self):
+        if self.robot:
+            self.robot.Destroy()
+        
+        self.robot = self.InstanceObject(name='elfin5_gripper_enhanced', id=55752, attr_type=attr.ControllerAttr)
+        self.robot.SetJointPositionDirectly(self.init_pos)
+        self.attrs[557520] = attr.ControllerAttr(self, 557520)
+        self.gripper = self.attrs[557520]
+        self.gripper.GripperOpen()
+        self._step()
 
     def _reset_object(self):
         if self.akb:
@@ -250,6 +276,7 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         self.akb.SetImmovable(False)
         self.akb.SetAllGravity(True)
         self.akb.SetTag('target')
+        self.akb.SetAlbedoRecursively(color=[1.,1.,1.,1.])
         self.akb.GenerateMeshCollider()
         self._step()
 
