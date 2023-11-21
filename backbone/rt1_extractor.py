@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch
 import gym
 from torchvision import transforms
-from robotic_transformer_pytorch import MaxViT, RT1
+from .robotic_transformer_pytorch import MaxViT, RT1
 
 
 class RT1Extractor(BaseFeaturesExtractor):
@@ -15,7 +15,7 @@ class RT1Extractor(BaseFeaturesExtractor):
         device = torch.device("cuda", device)
 
         for key, subspace in observation_space.spaces.items():
-            if key == "head_rgb":
+            if key == "observation":
                 vit = MaxViT(
                     num_classes = 1000,
                     dim_conv_stem = 64,
@@ -33,11 +33,15 @@ class RT1Extractor(BaseFeaturesExtractor):
                     depth = 6,
                     heads = 8,
                     dim_head = 64,
-                    cond_drop_prob = 0.2
+                    cond_drop_prob = 0.2,
+                    conditioner_kwargs = dict(
+                        model_types = 't5',
+                        model_names = r'/home/amax/Project/Pretrained/t5-v1_1-base',
+                    )
                 )
                 fc = nn.Sequential(nn.Linear(768, feature_size), nn.ReLU())
                 self.RT1=RT1model.to(device)
-                extractors["head_rgb"] = fc
+                extractors["observation"] = fc
 
                 total_concat_size += feature_size
             if key == "state":
@@ -62,7 +66,7 @@ class RT1Extractor(BaseFeaturesExtractor):
         encoded_tensor_list = []
 
         for key, extractor in self.extractors.items():
-            if key == "head_rgb":
+            if key == "observation":
                 image = observations[key].permute((0, 3, 1, 2))
                 image = self.transform(image)
                 image = image.unsqueeze(2)

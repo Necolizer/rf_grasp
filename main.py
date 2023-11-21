@@ -50,7 +50,7 @@ def get_parser():
     parser.add_argument('--print_log', type=str2bool, default=True, help='print logging or not')
 
     # env
-    parser.add_argument('--n_envs', type=int, default=1, help='')
+    parser.add_argument('--num_envs', type=int, default=1, help='')
     parser.add_argument('--max_episode_length', type=int, default=160, help='')
     parser.add_argument('--reward_type', default='dense', help='')
     parser.add_argument('--tolerance', type=float, default=0.02, help='')
@@ -68,7 +68,7 @@ def get_parser():
     # parser.add_argument('--ignore_weights', type=str, default=[], nargs='+', help='the name of weights which will be ignored in the initialization')
 
     # cuda
-    parser.add_argument('--cuda_visible_device', default='0', help='')
+    parser.add_argument('--cuda_visible_device', type=str, default='0', help='')
     parser.add_argument('--device', type=int, default=[0], nargs='+', help='the indexes of GPUs for training or testing')
 
     # rl stable-baseline3
@@ -89,9 +89,9 @@ class Processor():
 
     def __init__(self, arg):
         self.arg = arg
-        self.global_step = 0
-        self.lr = self.arg.base_lr
-        self.best_acc = 0
+        # self.global_step = 0
+        # self.lr = self.arg.lr
+        # self.best_acc = 0
 
         if not os.path.exists(self.arg.work_dir):
             os.makedirs(self.arg.work_dir)
@@ -161,12 +161,12 @@ class Processor():
         #     eval_env = self.eval_env, 
         #     best_model_save_path = self.arg.work_dir,
         #     log_path = self.arg.work_dir, 
-        #     eval_freq = max(self.arg.freq // self.arg.n_envs, 1),
+        #     eval_freq = max(self.arg.freq // self.arg.num_envs, 1),
         #     deterministic = True, 
         #     render = False) 
 
         checkpoint_callback = CheckpointCallback(
-            save_freq = max(self.arg.freq // self.arg.n_envs, 1),
+            save_freq = max(self.arg.freq // self.arg.num_envs, 1),
             save_path = self.arg.work_dir,
             name_prefix = "rl_model",
             save_replay_buffer = True,

@@ -83,10 +83,14 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         
         self.robot.SetJointPosition(action[:-1].tolist())
 
+        self.robot.WaitDo()
+
         if action[-1] > 0:
             self.gripper.GripperOpen()
         else:
             self.gripper.GripperClose()
+
+        self.gripper.WaitDo()
 
         self._step()
         self.t += 1
@@ -154,17 +158,17 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         if self.gripper.data['gripper_is_hindered']:
             if self.gripper.data['gripper_is_holding']:
                 collision_reward = np.array([0], dtype=np.float32)
-                collision_isSuccess = (False).astype(np.float32)
+                collision_isSuccess = np.array([False], dtype=np.float32)
             else:
                 collision_reward = np.array([-100], dtype=np.float32)
-                collision_isSuccess = (False).astype(np.float32)
+                collision_isSuccess = np.array([False], dtype=np.float32)
         else:
             if self.gripper.data['gripper_is_holding']:
                 collision_reward = np.array([50], dtype=np.float32)
-                collision_isSuccess = (True).astype(np.float32)
+                collision_isSuccess = np.array([True], dtype=np.float32)
             else:
                 collision_reward = np.array([0], dtype=np.float32)
-                collision_isSuccess = (False).astype(np.float32)
+                collision_isSuccess = np.array([False], dtype=np.float32)
 
         # 3. Physics-based
 

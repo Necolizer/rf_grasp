@@ -6,7 +6,7 @@ run_mode: train
 print_log: True
 
 # env
-n_envs: 1
+num_envs: 1
 max_episode_length: 160
 reward_type: dense
 tolerance: 0.02
@@ -18,7 +18,7 @@ use_depth_img: False
 resized_img_shape: [224, 224]
 
 # cuda
-cuda_visible_device: 0
+cuda_visible_device: '0'
 device: [0]
 
 # rl stable-baseline3
