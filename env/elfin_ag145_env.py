@@ -119,13 +119,13 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         obs = self._get_obs()
         done = False
         
-        reward, isSuccess = self.reward_and_success_check()
+        reward, isSuccess, termination = self.reward_and_success_check()
 
         info = {
             'is_success': isSuccess
         }
 
-        if self.t == self.max_steps:
+        if termination or self.t == self.max_steps:
             done = True
 
         return obs, reward, done, info
@@ -169,25 +169,28 @@ class ElfinAG145Env(RFUniverseGymWrapper):
             distance_reward = -distance
 
         if (distance > self.tolerance) and not self.gripper.data['gripper_is_open']:
-            distance_reward = -distance * 2
+            distance_reward = -distance * 5
 
         distance_isSuccess = ((distance < self.tolerance) and not self.gripper.data['gripper_is_open']).astype(np.float32)
 
         # 2. Collision-based
+        termination = False
 
         if self.gripper.data['gripper_is_hindered']:
             if self.gripper.data['gripper_is_holding']:
-                collision_reward = np.array([0], dtype=np.float32)
+                collision_reward = np.array([0.0], dtype=np.float32)
                 collision_isSuccess = np.array([False], dtype=np.float32)
             else:
-                collision_reward = np.array([-100], dtype=np.float32)
+                collision_reward = np.array([-50.0], dtype=np.float32)
                 collision_isSuccess = np.array([False], dtype=np.float32)
+                termination = True
         else:
             if self.gripper.data['gripper_is_holding']:
-                collision_reward = np.array([50], dtype=np.float32)
+                collision_reward = np.array([10.0], dtype=np.float32)
                 collision_isSuccess = np.array([True], dtype=np.float32)
+                termination = True
             else:
-                collision_reward = np.array([0], dtype=np.float32)
+                collision_reward = np.array([0.0], dtype=np.float32)
                 collision_isSuccess = np.array([False], dtype=np.float32)
 
         # 3. Physics-based
@@ -197,8 +200,8 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         reward = distance_reward + collision_reward
         isSuccess = distance_isSuccess and collision_isSuccess
 
-        # reward, isSuccess
-        return reward, isSuccess
+        # reward, isSuccess, termination
+        return reward, isSuccess, termination
 
     def _env_setup(self):
 
@@ -231,6 +234,7 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         
         self._step()
 
+        # observations
         rgb = np.frombuffer(self.camera.data['rgb'], dtype=np.uint8)
         rgb = cv2.imdecode(rgb, cv2.IMREAD_COLOR)
         rgb = cv2.resize(rgb, self.resized_img_shape)
@@ -245,9 +249,16 @@ class ElfinAG145Env(RFUniverseGymWrapper):
 
         # FIXME add camera pos and ori
 
+
+        # states
+        state = np.concatenate(
+            (np.array(self.robot.data['joint_positions']), np.array([self.gripper.data['gripper_is_open']], dtype=np.float32)),
+            axis=-1
+        ) 
+
         return {
             'observation': obs.copy(),
-            'state': np.array(self.robot.data['joint_positions']).copy(),
+            'state': state.copy(),
         }
 
     def _generate_random_float(self, min: float, max: float) -> float:
