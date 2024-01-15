@@ -9,7 +9,7 @@ print_log: True
 num_envs: 1
 max_episode_length: 160
 reward_type: dense
-tolerance: 0.05
+tolerance: 0.02
 load_object: True
 bin: 64
 movable_joints: 6
@@ -23,10 +23,10 @@ device: [0]
 
 # rl stable-baseline3
 net_arch: [256,128]
-lr: 0.005
+lr: 0.00005
 gamma: 0.99
 total_timesteps: 4000000
 rollout_steps: 1600 #3200
 freq: 16000 #32000
-batch_size: 8
+batch_size: 24 #8
 progress_bar: True

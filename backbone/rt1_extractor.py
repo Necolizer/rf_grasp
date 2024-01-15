@@ -4,6 +4,7 @@ import torch
 import gym
 from torchvision import transforms
 from .robotic_transformer_pytorch import MaxViT, RT1
+from .transformer import RT1_Mod
 
 
 class RT1Extractor(BaseFeaturesExtractor):
@@ -16,29 +17,30 @@ class RT1Extractor(BaseFeaturesExtractor):
 
         for key, subspace in observation_space.spaces.items():
             if key == "observation":
-                vit = MaxViT(
-                    num_classes = 1000,
-                    dim_conv_stem = 64,
-                    dim = 96,
-                    dim_head = 32,
-                    depth = (2, 2, 5, 2),
-                    window_size = 7,
-                    mbconv_expansion_rate = 4,
-                    mbconv_shrinkage_rate = 0.25,
-                    dropout = 0.1
-                )
+                # vit = MaxViT(
+                #     num_classes = 1000,
+                #     dim_conv_stem = 64,
+                #     dim = 96,
+                #     dim_head = 32,
+                #     depth = (2, 2, 5, 2),
+                #     window_size = 7,
+                #     mbconv_expansion_rate = 4,
+                #     mbconv_shrinkage_rate = 0.25,
+                #     dropout = 0.1
+                # )
 
-                RT1model = RT1(
-                    vit = vit,
-                    depth = 6,
-                    heads = 8,
-                    dim_head = 64,
-                    cond_drop_prob = 0.2,
-                    conditioner_kwargs = dict(
-                        model_types = 't5',
-                        model_names = r'/home/amax/Project/Pretrained/t5-v1_1-base',
-                    )
-                )
+                # RT1model = RT1(
+                #     vit = vit,
+                #     depth = 6,
+                #     heads = 8,
+                #     dim_head = 64,
+                #     cond_drop_prob = 0.2,
+                #     conditioner_kwargs = dict(
+                #         model_types = 't5',
+                #         model_names = r'/home/amax/Project/Pretrained/t5-v1_1-base',
+                #     )
+                # )
+                RT1model = RT1_Mod()
                 fc = nn.Sequential(nn.Linear(768, feature_size), nn.ReLU())
                 self.RT1=RT1model.to(device)
                 extractors["observation"] = fc
@@ -71,9 +73,12 @@ class RT1Extractor(BaseFeaturesExtractor):
                 image = self.transform(image)
                 image = image.unsqueeze(2)
 
-                instruction=['pick']
+                # instruction=['pick']
 
-                logits=self.RT1(image,instruction)
+                # logits=self.RT1(image,instruction)
+
+                logits=self.RT1(image)
+
                 features = extractor(logits)
                 if torch.isnan(features).any():
                     print('features of rgb appear nan')

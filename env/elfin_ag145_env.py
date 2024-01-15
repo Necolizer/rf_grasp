@@ -100,9 +100,10 @@ class ElfinAG145Env(RFUniverseGymWrapper):
 
         increment = self.action_space_to_incremental_angel(action=action[:-1])
         pos = np.array(self.robot.data['joint_positions']) + increment
-        boundaries = self.joints_angular_range()
-        clipped_pos = np.clip(pos, boundaries[:, 0], boundaries[:, 1])
-        self.robot.SetJointPosition(clipped_pos)
+        # boundaries = self.joints_angular_range()
+        # clipped_pos = np.clip(pos, boundaries[:, 0], boundaries[:, 1])
+        # self.robot.SetJointPosition(clipped_pos)
+        self.robot.SetJointPosition(pos)
 
         self.robot.WaitDo()
 
@@ -119,13 +120,13 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         obs = self._get_obs()
         done = False
         
-        reward, isSuccess, termination = self.reward_and_success_check()
+        reward, isSuccess = self.reward_and_success_check()
 
         info = {
             'is_success': isSuccess
         }
 
-        if termination or self.t == self.max_steps:
+        if self.t == self.max_steps or isSuccess:
             done = True
 
         return obs, reward, done, info
@@ -156,10 +157,10 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         achieved_goal = np.array(self.gripper.data['positions'][-1])
 
         # averaged origins
-        # desired_goal = np.mean(np.array(self.akb.data['positions']), axis=0) 
+        desired_goal = np.mean(np.array(self.akb.data['positions']), axis=0) 
         # center of mass
-        mass = np.array(self.akb.data['mass'])
-        desired_goal = (mass/np.sum(mass)) @ self.akb.data['center_of_mass']
+        # mass = np.array(self.akb.data['mass'])
+        # desired_goal = (mass/np.sum(mass)) @ self.akb.data['center_of_mass']
 
         distance = self._compute_goal_distance(achieved_goal, desired_goal)
 
@@ -167,41 +168,42 @@ class ElfinAG145Env(RFUniverseGymWrapper):
             distance_reward = -(distance > self.tolerance).astype(np.float32)
         else:
             distance_reward = -distance
+            if (distance > self.tolerance) and not self.gripper.data['gripper_is_open']:
+                distance_reward = distance_reward * 10
 
-        if (distance > self.tolerance) and not self.gripper.data['gripper_is_open']:
-            distance_reward = -distance * 5
-
-        distance_isSuccess = ((distance < self.tolerance) and not self.gripper.data['gripper_is_open']).astype(np.float32)
+        # distance_isSuccess = ((distance < self.tolerance) and not self.gripper.data['gripper_is_open']).astype(np.float32)
+        
+        distance_isSuccess = ((distance < self.tolerance)).astype(np.float32)
 
         # 2. Collision-based
-        termination = False
+        # termination = False
 
-        if self.gripper.data['gripper_is_hindered']:
-            if self.gripper.data['gripper_is_holding']:
-                collision_reward = np.array([0.0], dtype=np.float32)
-                collision_isSuccess = np.array([False], dtype=np.float32)
-            else:
-                collision_reward = np.array([-50.0], dtype=np.float32)
-                collision_isSuccess = np.array([False], dtype=np.float32)
-                termination = True
-        else:
-            if self.gripper.data['gripper_is_holding']:
-                collision_reward = np.array([10.0], dtype=np.float32)
-                collision_isSuccess = np.array([True], dtype=np.float32)
-                termination = True
-            else:
-                collision_reward = np.array([0.0], dtype=np.float32)
-                collision_isSuccess = np.array([False], dtype=np.float32)
+        # if self.gripper.data['gripper_is_hindered']:
+        #     if self.gripper.data['gripper_is_holding']:
+        #         collision_reward = np.array([0.0], dtype=np.float32)
+        #         collision_isSuccess = np.array([False], dtype=np.float32)
+        #     else:
+        #         collision_reward = np.array([-10.0], dtype=np.float32)
+        #         collision_isSuccess = np.array([False], dtype=np.float32)
+        #         termination = True
+        # else:
+        #     if self.gripper.data['gripper_is_holding']:
+        #         collision_reward = np.array([20.0], dtype=np.float32)
+        #         collision_isSuccess = np.array([True], dtype=np.float32)
+        #         termination = True
+        #     else:
+        #         collision_reward = np.array([0.0], dtype=np.float32)
+        #         collision_isSuccess = np.array([False], dtype=np.float32)
 
         # 3. Physics-based
 
 
         # Sum
-        reward = distance_reward + collision_reward
-        isSuccess = distance_isSuccess and collision_isSuccess
+        reward = distance_reward
+        isSuccess = distance_isSuccess
 
-        # reward, isSuccess, termination
-        return reward, isSuccess, termination
+        # reward, isSuccess
+        return reward, isSuccess
 
     def _env_setup(self):
 
