@@ -7,9 +7,9 @@ print_log: True
 
 # env
 num_envs: 1
-max_episode_length: 160
+max_episode_length: 80
 reward_type: dense
-tolerance: 0.02
+tolerance: 0.07
 load_object: True
 bin: 64
 movable_joints: 6

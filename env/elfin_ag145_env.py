@@ -218,7 +218,7 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         self.camera = self.InstanceObject(name='Camera', id=123456, attr_type=attr.CameraAttr)
 
         # FIXME camera pos and ori random
-        self.camera.SetTransform(position=[1.5, 0.8, 0], rotation=[0, 0, 0])
+        self.camera.SetTransform(position=[1.8, 0.8, 0], rotation=[0, 0, 0])
         # self.camera.LookAt(target=[i+j for i, j in zip(self.robot.data['position'], self.gripper.data['position'])])
         self.camera.LookAt(target=self.robot.data['position'])
 

@@ -239,6 +239,103 @@ class TokenLearner(nn.Module):
         x = unpack_one(x, ps, '* c n')
         return x
 
+# @beartype
+# class RT1_Mod(nn.Module):
+#     def __init__(
+#         self,
+#         *,
+#         depth = 6,
+#         heads = 8,
+#         dim_head = 64,
+#         token_learner_ff_mult = 2,
+#         token_learner_num_layers = 2,
+#         token_learner_num_output_tokens = 8,
+#     ):
+#         super().__init__()
+
+#         vit_embed_dim = 768
+
+#         config = _cfg(url='', file='/home/amax/Project/Pretrained/vit_base_patch16_224.augreg2_in21k_ft_in1k/pytorch_model.bin')
+#         self.vit = timm.create_model(
+#             "vit_base_patch16_224.augreg2_in21k_ft_in1k",
+#             pretrained=True,
+#             num_classes=0,
+#             pretrained_cfg=config
+#         )
+
+#         self.token_learner = TokenLearner(
+#             dim = vit_embed_dim,
+#             ff_mult = token_learner_ff_mult,
+#             num_output_tokens = token_learner_num_output_tokens,
+#             num_layers = token_learner_num_layers
+#         )
+
+#         self.num_learned_tokens = token_learner_num_output_tokens
+
+#         self.transformer_depth = depth
+
+#         self.transformer = Transformer(
+#             dim = vit_embed_dim,
+#             dim_head = dim_head,
+#             heads = heads,
+#             depth = depth
+#         )
+#         self.to_logits = nn.Sequential(
+#             LayerNorm(vit_embed_dim),
+#         )
+
+#     def forward(
+#         self,
+#         video,
+#     ):
+#         # print(video.shape) #torch.Size([1, 3, 1, 224, 224])
+
+#         frames, device = video.shape[2], video.device
+
+#         video = rearrange(video, 'b c f h w -> b f c h w')
+#         images, packed_shape = pack_one(video, '* c h w')
+#         # print('images=',images.shape)
+
+#         tokens = self.vit.forward_features(
+#             images,
+#         )[:,1:,:]
+
+#         tokens = tokens.permute(0, 2, 1)
+#         tokens = tokens.view(tokens.shape[0], tokens.shape[1], int(tokens.shape[2] ** 0.5), int(tokens.shape[2] ** 0.5))
+
+#         # print('tokens=',tokens.shape)
+#         tokens = unpack_one(tokens, packed_shape, '* c h w')
+#         # print('unpack tokens=',tokens.shape)
+
+#         learned_tokens = self.token_learner(tokens)
+#         # print('learned_tokens=',learned_tokens.shape)
+#         learned_tokens = rearrange(learned_tokens, 'b f c n -> b (f n) c')
+#         # print('learned_tokens=',learned_tokens.shape)
+#         # causal attention mask
+
+#         attn_mask = torch.ones((frames, frames), dtype = torch.bool, device = device).triu(1)
+#         attn_mask = repeat(attn_mask, 'i j -> (i r1) (j r2)', r1 = self.num_learned_tokens, r2 = self.num_learned_tokens)
+
+#         # sinusoidal positional embedding
+
+#         pos_emb = posemb_sincos_1d(frames, learned_tokens.shape[-1], dtype = learned_tokens.dtype, device = learned_tokens.device)
+
+#         learned_tokens = learned_tokens + repeat(pos_emb, 'n d -> (n r) d', r = self.num_learned_tokens)
+
+#         # attention
+
+#         attended_tokens = self.transformer(learned_tokens, attn_mask = ~attn_mask)
+#         # print('attended_token=',attended_tokens.shape)
+#         pooled = reduce(attended_tokens, 'b (f n) d -> b f d', 'mean', f = frames)
+        
+#         # print('ss')
+#         # print('pooled=',pooled.shape)
+#         # return pooled.squeeze(1)
+#         logits = self.to_logits(pooled).squeeze(1)
+#         # print(logits.shape) #torch.Size([1, 768])
+#         return logits
+    
+
 @beartype
 class RT1_Mod(nn.Module):
     def __init__(
@@ -284,9 +381,15 @@ class RT1_Mod(nn.Module):
             LayerNorm(vit_embed_dim),
         )
 
+        self.state_linear = nn.Sequential(
+            LayerNorm(7),
+            nn.Linear(7, 768)
+        )
+
     def forward(
         self,
         video,
+        states
     ):
         # print(video.shape) #torch.Size([1, 3, 1, 224, 224])
 
@@ -310,17 +413,21 @@ class RT1_Mod(nn.Module):
         learned_tokens = self.token_learner(tokens)
         # print('learned_tokens=',learned_tokens.shape)
         learned_tokens = rearrange(learned_tokens, 'b f c n -> b (f n) c')
-        # print('learned_tokens=',learned_tokens.shape)
+        # print('learned_tokens=',learned_tokens.shape) #torch.Size([1, 8, 768])
+
+        state_token = self.state_linear(states).unsqueeze(1)
+        learned_tokens = torch.cat((learned_tokens, state_token), dim=1)
+
         # causal attention mask
 
         attn_mask = torch.ones((frames, frames), dtype = torch.bool, device = device).triu(1)
-        attn_mask = repeat(attn_mask, 'i j -> (i r1) (j r2)', r1 = self.num_learned_tokens, r2 = self.num_learned_tokens)
+        attn_mask = repeat(attn_mask, 'i j -> (i r1) (j r2)', r1 = self.num_learned_tokens + 1, r2 = self.num_learned_tokens + 1)
 
         # sinusoidal positional embedding
 
         pos_emb = posemb_sincos_1d(frames, learned_tokens.shape[-1], dtype = learned_tokens.dtype, device = learned_tokens.device)
 
-        learned_tokens = learned_tokens + repeat(pos_emb, 'n d -> (n r) d', r = self.num_learned_tokens)
+        learned_tokens = learned_tokens + repeat(pos_emb, 'n d -> (n r) d', r = self.num_learned_tokens + 1)
 
         # attention
 
