@@ -6,7 +6,8 @@ run_mode: train
 print_log: True
 
 # env
-num_envs: 1
+executable_file: /home/amax/Project/rfuniverse/runtime_1/runtime.x86_64
+num_envs: 2
 max_episode_length: 8 #80
 reward_type: dense
 tolerance: 0.15 #0.07

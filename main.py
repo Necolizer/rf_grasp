@@ -10,6 +10,8 @@ import yaml
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback
+from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.env_util import make_vec_env
 from backbone.rt1_extractor import RT1Extractor
 from env.elfin_ag145_env import ElfinAG145Env
 
@@ -50,6 +52,7 @@ def get_parser():
     parser.add_argument('--print_log', type=str2bool, default=True, help='print logging or not')
 
     # env
+    parser.add_argument('--executable_file', default=None, help='path to the executable file (simulation env)')
     parser.add_argument('--num_envs', type=int, default=1, help='')
     parser.add_argument('--max_episode_length', type=int, default=160, help='')
     parser.add_argument('--reward_type', default='dense', help='')
@@ -100,13 +103,29 @@ class Processor():
         self.load_model()
 
     def init_env(self):
-        self.env = ElfinAG145Env(
+        # self.env = ElfinAG145Env(
+        #     max_episode_length = self.arg.max_episode_length,
+        #     reward_type = self.arg.reward_type,
+        #     tolerance = self.arg.tolerance,
+        #     load_object = self.arg.load_object,
+        #     seed = self.arg.seed,
+        #     executable_file = self.arg.executable_file,
+        #     scene_file = None,
+        #     asset_bundle_file = None,
+        #     assets = [],
+        #     bin = self.arg.bin,
+        #     movable_joints = self.arg.movable_joints,
+        #     raw_img_shape = self.arg.raw_img_shape,
+        #     use_depth_img = self.arg.use_depth_img,
+        #     resized_img_shape = self.arg.resized_img_shape,
+        # )
+        env_args = dict(
             max_episode_length = self.arg.max_episode_length,
             reward_type = self.arg.reward_type,
             tolerance = self.arg.tolerance,
             load_object = self.arg.load_object,
             seed = self.arg.seed,
-            executable_file = None,
+            executable_file = self.arg.executable_file,
             scene_file = None,
             asset_bundle_file = None,
             assets = [],
@@ -116,6 +135,8 @@ class Processor():
             use_depth_img = self.arg.use_depth_img,
             resized_img_shape = self.arg.resized_img_shape,
         )
+
+        self.env = make_vec_env(ElfinAG145Env, n_envs=self.arg.num_envs, seed=self.arg.seed, vec_env_cls=SubprocVecEnv, env_kwargs=env_args)
 
         # self.eval_env = ElfinAG145Env(
 
