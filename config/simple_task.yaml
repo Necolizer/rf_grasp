@@ -1,12 +1,12 @@
 # processor
 seed: 1
-work_dir: ../work_dir/simple_task
+work_dir: ../work_dir/simple_task_offi
 config: ./config/simple_task.yaml
 run_mode: train
 print_log: True
 
 # env
-executable_file: /home/amax/Project/rfuniverse/runtime_1/runtime.x86_64
+executable_file: /home/amax/Project/rfuniverse/RFUniverse_For_Linux_v0.12.2/RFUniverse.x86_64 #/home/amax/Project/rfuniverse/runtime_1/runtime.x86_64
 num_envs: 2
 max_episode_length: 8 #80
 reward_type: dense

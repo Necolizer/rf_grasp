@@ -59,36 +59,13 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         self.action_space = spaces.Box(
             low=self.low,  high=self.high, shape = (self.movable_joints+1,), dtype=np.float32
         )
-        # self.low = np.array([-175.0, -135.0, -150.0, -175.0, -147.0, -175.0, -1])
-        # self.high = np.array([175.0, 135.0, 150.0, 175.0, 147.0, 175.0, 1])
-        # self.action_space = spaces.Box(
-        #     low=self.low,  high=self.high, dtype=np.float32
-        # )
-        # self.action_space = spaces.MultiDiscrete([self.bin for i in range(self.movable_joints)]+[2])
+
         obs = self._get_obs()
         self.observation_space = spaces.Dict({
             'observation': spaces.Box(-np.inf, np.inf, shape=obs['observation'].shape, dtype=np.float32),
             'state': spaces.Box(-np.inf, np.inf, shape=obs['state'].shape, dtype=np.float32)
         })
 
-    def joints_angular_range(self):
-        joints = [
-            [-175.0,175.0],
-            [-135.0,135.0],
-            [-150.0,150.0],
-            [-175.0,175.0],
-            [-147.0,147.0],
-            [-175.0,175.0],
-        ]
-        return np.array(joints, dtype=np.float32)
-    
-    # def action_space_to_absolute_angel(self, action: np.ndarray):
-    #     # symmetric
-    #     return action * np.array([175.0, 135.0, 150.0, 175.0, 147.0, 175.0, 1.0], dtype=np.float32)
-    
-    # def action_space_to_incremental_angel(self, action: np.ndarray):
-    #     # symmetric
-    #     return action * (np.array([175.0, 135.0, 150.0, 175.0, 147.0, 175.0], dtype=np.float32) * 2 / self.bin)
     
     def action_space_to_target(self, action: np.ndarray):
         return action * np.array([0.3, 0.3, 0.6, 90.0, 90.0, 90.0], dtype=np.float32) + np.array([0.4, 0.3, 0.0, 0.0, 90.0, -90.0], dtype=np.float32)
@@ -98,9 +75,6 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         Params:
             action: numpy array.
         """
-
-        # action = self.action_space_to_absolute_angel(action)
-        # self.robot.SetJointPosition(action[:-1].tolist())
 
         target_pos = self.action_space_to_target(action=action[:-1])
 
@@ -157,7 +131,7 @@ class ElfinAG145Env(RFUniverseGymWrapper):
     def reward_and_success_check(self):
         # 1. Distance-based
 
-        achieved_goal = np.array(self.robot.data['iKTarget']) #np.array(self.gripper.data['positions'][-1])
+        achieved_goal = np.array(self.gripper.data['positions'][-1])
         # print(achieved_goal)
 
         # averaged origins
@@ -174,7 +148,8 @@ class ElfinAG145Env(RFUniverseGymWrapper):
             distance_reward = -(distance > self.tolerance).astype(np.float32)
         else:
             distance_reward = -distance
-            if (distance > self.tolerance) and not self.gripper.data['gripper_is_open']:
+            # if (distance > self.tolerance) and not self.gripper.data['gripper_is_open']:
+            if (distance > self.tolerance):
                 distance_reward = distance_reward * 10
 
         # distance_isSuccess = ((distance < self.tolerance) and not self.gripper.data['gripper_is_open']).astype(np.float32)
@@ -213,19 +188,30 @@ class ElfinAG145Env(RFUniverseGymWrapper):
 
     def _env_setup(self):
 
-        self.robot = self.InstanceObject(name='elfin5_gripper_enhanced', id=55752, attr_type=attr.ControllerAttr)
-        # self.robot.SetJointPositionDirectly(self.init_pos)
+        # self.robot = self.InstanceObject(name='elfin5_gripper_enhanced', id=55752, attr_type=attr.ControllerAttr)
+        # # self.robot.SetJointPositionDirectly(self.init_pos)
+        # self.robot.EnabledNativeIK(True)
+        # self.robot.IKTargetDoMove(position=[0.5, 0.5, 0], duration=0, speed_based=False)
+        # self.robot.IKTargetDoRotate(rotation=[0, 90, -90], duration=0, speed_based=False)
+        # self._step()
+        # self.robot.WaitDo()
+
+        # self.attrs[557520] = attr.ControllerAttr(self, 557520)
+        # self.gripper = self.attrs[557520]
+        # self.gripper.GripperOpen()
+
+        # self._step()
+
+        self.robot = self.InstanceObject(name='franka_panda', id=123432, attr_type=attr.ControllerAttr)
         self.robot.EnabledNativeIK(True)
-        self.robot.IKTargetDoMove(position=[0.5, 0.5, 0], duration=0, speed_based=False)
-        self.robot.IKTargetDoRotate(rotation=[0, 90, -90], duration=0, speed_based=False)
+        self.robot.SetIKTargetOffset(position=[0, 0.105, 0])
+        self._step()
+        self.gripper = self.GetAttr(1234320)
+        self.gripper.GripperOpen()
+        self.robot.IKTargetDoMove(position=[0, 0.5, 0.5], duration=0, speed_based=False)
+        self.robot.IKTargetDoRotate(rotation=[0, 45, 180], duration=0, speed_based=False)
         self._step()
         self.robot.WaitDo()
-
-        self.attrs[557520] = attr.ControllerAttr(self, 557520)
-        self.gripper = self.attrs[557520]
-        self.gripper.GripperOpen()
-
-        self._step()
 
         self.camera = self.InstanceObject(name='Camera', id=123456, attr_type=attr.CameraAttr)
 
@@ -265,10 +251,7 @@ class ElfinAG145Env(RFUniverseGymWrapper):
 
 
         # states
-        state = np.concatenate(
-            (np.array(self.robot.data['joint_positions']), np.array([self.gripper.data['gripper_is_open']], dtype=np.float32)),
-            axis=-1
-        ) 
+        state = np.array(self.robot.data['joint_positions']) # temp!!!
 
         return {
             'observation': obs.copy(),
@@ -291,30 +274,29 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         if self.robot:
             self.robot.Destroy()
         
-        self.robot = self.InstanceObject(name='elfin5_gripper_enhanced', id=55752, attr_type=attr.ControllerAttr)
-        # self.robot.SetJointPositionDirectly(self.init_pos)
+        self.robot = self.InstanceObject(name='franka_panda', id=123432, attr_type=attr.ControllerAttr)
         self.robot.EnabledNativeIK(True)
-        self.robot.IKTargetDoMove(position=[0.5, 0.5, 0], duration=0, speed_based=False)
-        self.robot.IKTargetDoRotate(rotation=[0, 90, -90], duration=0, speed_based=False)
+        self.robot.SetIKTargetOffset(position=[0, 0.105, 0])
+        self._step()
+        self.gripper = self.GetAttr(1234320)
+        self.gripper.GripperOpen()
+        self.robot.IKTargetDoMove(position=[0, 0.5, 0.5], duration=0, speed_based=False)
+        self.robot.IKTargetDoRotate(rotation=[0, 45, 180], duration=0, speed_based=False)
         self._step()
         self.robot.WaitDo()
-
-        self.attrs[557520] = attr.ControllerAttr(self, 557520)
-        self.gripper = self.attrs[557520]
-        self.gripper.GripperOpen()
-        self._step()
 
     def _reset_object(self):
         if self.akb:
             self.akb.Destroy()
 
         # FIXME akb loading and randomizing
-        self.akb = self.LoadURDF(path=os.path.abspath('/media/amax/NECOStorage/AKB_48_Dataset_v1.0/v1.0/drink/0b6681c4-0e49-11ed-a4e9-ec2e98c7e246/motion_unity_update.urdf'), native_ik=False)
+        self.akb = self.LoadURDF(path=os.path.abspath('/home/amax/Project/rfuniverse/work_dir/object/drink/0b6681c4-0e49-11ed-a4e9-ec2e98c7e246/motion_unity_update.urdf'), native_ik=False)
         # FIXME akb randomize pos and ori
         self.akb.SetTransform(position=[random.uniform(0.4, 0.6), 0.03, random.uniform(-0.6, 0.6)], rotation=[0, 0, 0])
+        self.akb.SetImmovable(True)
         # self.akb.SetImmovable(False)
-        self.akb.SetAllGravity(True)
-        self.akb.SetTag('target')
-        self.akb.SetAlbedoRecursively(color=[1.,1.,1.,1.])
-        self.akb.GenerateMeshCollider()
+        # self.akb.SetAllGravity(True)
+        # self.akb.SetTag('target')
+        # self.akb.SetAlbedoRecursively(color=[1.,1.,1.,1.])
+        # self.akb.GenerateMeshCollider()
         self._step()
