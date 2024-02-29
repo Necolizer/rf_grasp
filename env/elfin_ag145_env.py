@@ -203,7 +203,7 @@ class ElfinAG145Env(RFUniverseGymWrapper):
         # self._step()
 
         self.robot = self.InstanceObject(name='franka_panda', id=123432, attr_type=attr.ControllerAttr)
-        self.robot.EnabledNativeIK(True)
+        # self.robot.EnabledNativeIK(True)
         self.robot.SetIKTargetOffset(position=[0, 0.105, 0])
         self._step()
         self.gripper = self.GetAttr(1234320)
@@ -275,7 +275,7 @@ class ElfinAG145Env(RFUniverseGymWrapper):
             self.robot.Destroy()
         
         self.robot = self.InstanceObject(name='franka_panda', id=123432, attr_type=attr.ControllerAttr)
-        self.robot.EnabledNativeIK(True)
+        # self.robot.EnabledNativeIK(True)
         self.robot.SetIKTargetOffset(position=[0, 0.105, 0])
         self._step()
         self.gripper = self.GetAttr(1234320)
